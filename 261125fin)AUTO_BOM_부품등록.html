@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUTO BOM 부품 등록</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* 레이아웃: 상단 단계 표시 → 단계별 카드 → 하단 고정 액션 바. 넓은 표는 자기 상자 안에서만 가로 스크롤 */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --surface-2: #f8f9fb; --ink: #17202b; --muted: #5d6875; --line: #dbe1e7;
+  --accent: #23408e; --accent-hover: #1b336f; --accent-soft: #e7ecf8; --accent-ink: #1b336f;
+  --ok: #1d7a4a; --ok-soft: #e3f3ea; --warn: #9a5800; --warn-soft: #fbf0dc; --bad: #b8322a; --bad-soft: #fbe7e5;
+  --edit: #fff6cc; --edit-ink: #6b5200;
+  --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141a; --surface: #171e26; --surface-2: #1c242e; --ink: #e3e8ee; --muted: #9aa6b2; --line: #2b3541;
+  --accent: #7d9cf0; --accent-hover: #9bb4f5; --accent-soft: #1e2a45; --accent-ink: #c4d3fa;
+  --ok: #6fd19c; --ok-soft: #14301f; --warn: #f0b860; --warn-soft: #362810; --bad: #ff8d84; --bad-soft: #3a1714;
+  --edit: #3a3210; --edit-ink: #f3dc85; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f141a; --surface: #171e26; --surface-2: #1c242e; --ink: #e3e8ee; --muted: #9aa6b2; --line: #2b3541;
+  --accent: #7d9cf0; --accent-hover: #9bb4f5; --accent-soft: #1e2a45; --accent-ink: #c4d3fa;
+  --ok: #6fd19c; --ok-soft: #14301f; --warn: #f0b860; --warn-soft: #362810; --bad: #ff8d84; --bad-soft: #3a1714;
+  --edit: #3a3210; --edit-ink: #f3dc85; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.55; overflow-x: hidden }
+button, input, select { font: inherit; color: inherit }
+.app { max-width: 1200px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 130px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 20px }
+.app > * { min-width: 0 }
+
+/* 상단 */
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px }
+.brand small { display: block; font-size: 12px; font-weight: 600; letter-spacing: .08em; color: var(--accent) }
+.brand h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600 }
+.stepper { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap }
+.stepper li { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 13px }
+.stepper li b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-size: 12px; font-family: var(--mono) }
+.stepper li[aria-current="step"] { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft) }
+.stepper li[aria-current="step"] b { background: var(--accent); color: var(--surface) }
+.stepper li.done b { background: var(--ok); color: var(--surface) }
+
+/* 카드 */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr) } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; min-width: 0 }
+.card h2 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px }
+.card h2 .num { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500 }
+.field { display: grid; gap: 6px; min-width: 0 }
+.field > label, .lbl { font-size: 13px; font-weight: 500 }
+.row { display: flex; gap: 8px; min-width: 0 }
+.row > input, .row > select { flex: 1 1 auto; min-width: 0 }
+input[type="text"], input[type="search"], input[type="number"], select { height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-within, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 }
+
+.btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 500 }
+.btn:hover { background: var(--surface-2) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface) }
+.btn.primary:hover { background: var(--accent-hover) }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--accent) }
+.btn.ghost:hover { background: var(--accent-soft) }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 13px }
+
+/* 고객 */
+.results { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none }
+.results button { width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; display: flex; justify-content: space-between; gap: 12px }
+.results button:hover { border-color: var(--accent) }
+.results .sub { color: var(--muted); font-size: 12.5px }
+.cust { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); padding: 14px 16px; display: grid; gap: 10px }
+.cust-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap }
+.cust-head strong { font-size: 15px }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 16px; margin: 0 }
+.kv div { min-width: 0 }
+.kv dt { font-size: 12px; color: var(--muted) }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere }
+.newproj { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius) }
+
+/* 파일 */
+.drop { position: relative; border: 2px dashed var(--line); border-radius: 12px; background: var(--surface-2); padding: 28px 16px; text-align: center; display: grid; gap: 6px; place-items: center; cursor: pointer; transition: border-color .15s, background .15s }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft) }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100% }
+.drop .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center }
+.drop strong { font-size: 15px }
+.filebox { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); min-width: 0 }
+.filebox .meta { flex: 1 1 auto; min-width: 0 }
+.filebox .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.filebox .sub { font-size: 12.5px; color: var(--muted) }
+.badge-x { width: 34px; height: 34px; flex: none; border-radius: 8px; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; font-weight: 600; font-size: 12px }
+.tips { margin: 0; padding: 12px 14px 12px 30px; background: var(--surface-2); border-radius: var(--radius); font-size: 13px; color: var(--muted); display: grid; gap: 4px }
+.tips b { color: var(--ink); font-weight: 500 }
+.split { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap }
+.err { color: var(--bad); font-size: 13px; margin: 0 }
+
+/* 2·3단계 공통 */
+.summary { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 13px }
+.summary span { color: var(--muted) }
+.summary b { font-weight: 500; color: var(--ink); overflow-wrap: anywhere }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0 }
+.tab { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; max-width: 220px }
+.tab span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tab .c { font-family: var(--mono); font-size: 11.5px; color: var(--muted) }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface) }
+.tab[aria-selected="true"] .c { color: var(--surface) }
+.opts { display: flex; gap: 8px 16px; align-items: center; flex-wrap: wrap; font-size: 13px }
+.opts select { height: 32px }
+.opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer }
+.notice { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 10px 14px; list-style: none; background: var(--warn-soft); color: var(--warn); border-radius: var(--radius); font-size: 13px }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted) }
+.chip.set { border-color: transparent; background: var(--ok-soft); color: var(--ok) }
+.chip.req { border-color: var(--bad); color: var(--bad) }
+.chip .col { font-family: var(--mono); margin-left: 4px }
+.flash { font-size: 13px; color: var(--accent-ink); margin: 0 }
+.flash:empty { display: none }
+.editbar { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted) }
+.editbar b { color: var(--edit-ink); background: var(--edit); padding: 1px 8px; border-radius: 6px; font-weight: 500 }
+
+/* 일괄 작업 바 */
+.bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 14px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; font-size: 13px }
+.bulk .cnt { font-weight: 600; color: var(--accent-ink) }
+.bulk .grp { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap }
+.bulk input[type="number"] { width: 84px; height: 30px; padding: 0 8px }
+.bulk .sep { width: 1px; height: 20px; background: var(--line) }
+@media (max-width: 640px) { .bulk .sep { display: none } }
+
+/* 표 */
+.grid-wrap { overflow: auto; max-height: min(62vh, 640px); border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+table.grid { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 13px }
+.grid th, .grid td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; background: var(--surface) }
+.grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); padding: 8px; font-weight: 500 }
+.grid thead tr.letters th { height: 30px; padding: 4px 10px; font-family: var(--mono); font-size: 11.5px; color: var(--muted) }
+.grid thead tr.types th { top: 30px }
+.grid .rn { position: sticky; left: 0; z-index: 1; width: 92px; min-width: 92px; max-width: 92px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); background: var(--surface-2) }
+.grid thead .rn { z-index: 3 }
+.grid .rn .rh { display: flex; align-items: center; gap: 8px }
+.grid .opt { width: 76px; min-width: 76px; text-align: center; vertical-align: middle }
+.grid thead .opt { font-family: var(--sans); font-size: 12px; color: var(--ink) }
+.grid thead .opt label { display: grid; gap: 4px; justify-items: center; cursor: pointer }
+.grid td.cell { min-width: 120px; max-width: 260px }
+.grid td.cell .clamp { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.grid.editable td.cell.ed { cursor: text }
+.grid.editable td.cell.ed:hover { box-shadow: inset 0 0 0 1px var(--accent) }
+.grid.wrap td.cell .clamp { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical }
+.grid td.cell.edited { background: var(--edit); color: var(--edit-ink) }
+.grid td.cell.editing { padding: 3px; overflow: visible }
+.grid td.cell.editing input { width: 100%; min-width: 180px; height: 32px; padding: 0 8px; border: 2px solid var(--accent); border-radius: 6px; background: var(--surface) }
+.grid select.type { width: 100%; min-width: 120px; height: 32px; font-size: 13px; padding: 0 8px }
+.grid th.mapped select.type { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); font-weight: 500 }
+.grid td.dim, .grid th.dim { color: var(--muted) }
+.grid tr.headrow td { background: var(--accent-soft); color: var(--accent-ink); font-weight: 500 }
+.grid tr.skip td.cell { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line) }
+.grid tr.sel td { background: var(--accent-soft) }
+.grid tr.sel td.cell.edited { background: var(--edit) }
+.pill { display: inline-block; margin-top: 4px; font-family: var(--sans); font-size: 11px; line-height: 1.6; padding: 0 6px; border-radius: 4px; background: var(--bad-soft); color: var(--bad); border: 0; cursor: default }
+.pill.w { background: var(--warn-soft); color: var(--warn) }
+.mul { margin-left: 6px; font-family: var(--mono); font-size: 11px; padding: 0 5px; border-radius: 4px; background: var(--accent); color: var(--surface) }
+.pill.h { background: var(--accent); color: var(--surface) }
+button.pill { cursor: pointer }
+a.pill.l { background: var(--accent-soft); color: var(--accent-ink); text-decoration: none; margin-left: 4px }
+a.pill.l:hover { text-decoration: underline }
+.grid .opt input:disabled { opacity: .35 }
+.grid td.lnk a { color: var(--accent-ink); text-decoration: none; display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom }
+.grid td.lnk a:hover { text-decoration: underline }
+button.pill:hover { text-decoration: underline }
+/* BOM 판별 */
+.judge { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0 }
+.judge .jtop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px }
+.judge .jtitle { font-size: 13px; color: var(--muted) }
+.vd { display: inline-block; font-size: 14px; font-weight: 600; padding: 3px 12px; border-radius: 999px }
+.vd.bom { background: var(--ok-soft); color: var(--ok) }
+.vd.likely { background: var(--warn-soft); color: var(--warn) }
+.vd.parts { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line) }
+.judge .ovr { margin-left: auto; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px }
+.judge .ovr select { height: 32px; font-size: 13px; padding: 0 8px }
+.jchk { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px }
+.jchk li { min-width: 0 }
+.jchk li::before { content: '✓'; color: var(--ok); font-weight: 700; margin-right: 6px }
+.jchk li.no::before { content: '✕'; color: var(--bad) }
+.jchk li.info::before { content: '·'; color: var(--muted) }
+.jchk b { font-weight: 600; font-variant-numeric: tabular-nums }
+.judge details summary { cursor: pointer; font-size: 13px; color: var(--accent-ink) }
+.jlist { margin: 8px 0 0; max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px }
+.jlist table { border-collapse: collapse; width: 100%; font-size: 12.5px }
+.jlist th, .jlist td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
+.jlist th { position: sticky; top: 0; background: var(--surface-2); font-weight: 500; color: var(--muted) }
+.jlist td.t { font-family: var(--mono); font-weight: 600; width: 32px }
+.jlist td.n { font-variant-numeric: tabular-nums; color: var(--muted); width: 44px }
+.kpi.bom b { color: var(--ok) } .kpi.likely b { color: var(--warn) } .kpi.parts b { color: var(--muted) }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted) }
+.stats b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600 }
+
+/* 3단계 */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0 }
+.kpi span { font-size: 12.5px; color: var(--muted) }
+.kpi b { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere }
+.kpi.ok b { color: var(--ok) } .kpi.bad b { color: var(--bad) }
+.st { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; white-space: nowrap }
+.st.ok { background: var(--ok-soft); color: var(--ok) }
+.st.none { background: var(--bad-soft); color: var(--bad) }
+.st.part { background: var(--accent-soft); color: var(--accent-ink) }
+.st.warn { background: var(--warn-soft); color: var(--warn) }
+.st.link { background: var(--accent); color: var(--surface) }
+.kpi.link b { color: var(--accent-ink) }
+.kpi.warn b { color: var(--warn) }
+.grid td.old { color: var(--muted) }
+.grid td.old.diff { color: var(--warn); font-weight: 500 }
+.mode { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line) }
+.mode.live { background: var(--ok-soft); color: var(--ok); border-color: transparent }
+.grid td.res { font-family: var(--mono); font-size: 12.5px; font-weight: 500; min-width: 180px }
+.grid .ck { text-align: center; color: var(--ok); font-weight: 600 }
+.demo { padding: 10px 14px; border-radius: var(--radius); background: var(--surface-2); border: 1px dashed var(--line); color: var(--muted); font-size: 12.5px; margin: 0 }
+.result-msg { padding: 12px 14px; border-radius: var(--radius); background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; margin: 0 }
+
+/* 하단 액션 바 */
+.actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) }
+.actions .in { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap }
+.actions .why { font-size: 13px; color: var(--muted); min-width: 0 }
+.actions .why.ok { color: var(--ok) }
+.actions .why.warn { color: var(--warn) }
+.actions .btns { display: flex; gap: 8px; margin-left: auto }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><small>AUTO BOM</small><h1>부품 등록</h1></div>
+    <ol class="stepper" id="stepper">
+      <li data-s="1"><b>1</b>고객 · 파일</li>
+      <li data-s="2"><b>2</b>컬럼 지정 · 수정</li>
+      <li data-s="3"><b>3</b>변환 결과 · INQ 등록</li>
+    </ol>
+  </header>
+
+  <!-- 1단계: 고객 · 프로젝트 · 파일 -->
+  <section id="step1" aria-labelledby="s1h">
+    <h2 id="s1h" class="sr">1단계 고객과 파일 선택</h2>
+    <div class="cols">
+      <div class="card">
+        <h2><span class="num">01</span>고객 · 프로젝트</h2>
+        <div class="field" id="custField">
+          <label for="custQ">고객 검색</label>
+          <form class="row" id="custForm" autocomplete="off">
+            <input type="search" id="custQ" placeholder="회원번호, 고객명 또는 회사명">
+            <button class="btn" type="submit">검색</button>
+          </form>
+          <p class="hint">회원번호(user_number) 또는 고객명·회사명으로 찾을 수 있습니다.</p>
+          <p class="err" id="custErr" hidden></p>
+          <ul class="results" id="custResults" hidden></ul>
+        </div>
+        <div class="cust" id="custBox" hidden>
+          <div class="cust-head"><strong id="custTitle"></strong><button class="btn ghost sm" type="button" id="custChange">다른 고객 선택</button></div>
+          <dl class="kv" id="custKv"></dl>
+        </div>
+        <div class="field" id="projField" hidden>
+          <label for="projSel">프로젝트</label>
+          <div class="row"><input type="search" id="projQ" placeholder="프로젝트 이름으로 좁히기" aria-label="프로젝트 검색"></div>
+          <div class="row">
+            <select id="projSel"></select>
+            <button class="btn" type="button" id="projNewBtn">신규 등록</button>
+          </div>
+          <div class="newproj" id="projNew" hidden>
+            <label class="lbl" for="projNewName">새 프로젝트 이름</label>
+            <div class="row"><input type="text" id="projNewName" placeholder="예: RELAY_MATRIX_BOARD_REV2"><button class="btn primary" type="button" id="projNewSave">등록</button><button class="btn" type="button" id="projNewCancel">취소</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="split">
+          <h2><span class="num">02</span>BOM 파일</h2>
+          <button class="btn sm" type="button" id="tplBtn">양식 다운로드</button>
+        </div>
+        <label class="drop" id="drop">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" aria-label="BOM 파일 선택">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg></span>
+          <strong>파일을 끌어다 놓거나 클릭해서 선택</strong>
+          <span class="hint">xlsx · xls · csv</span>
+        </label>
+        <div class="filebox" id="fileBox" hidden>
+          <span class="badge-x" id="fileExt">XLSX</span>
+          <div class="meta"><div class="name" id="fileName"></div><div class="sub" id="fileSub"></div></div>
+          <button class="btn ghost sm" type="button" id="fileRemove">제거</button>
+        </div>
+        <p class="err" id="fileErr" hidden></p>
+        <ul class="tips">
+          <li><b>양식을 참고해</b> 불필요한 데이터는 지우고 올려 주세요.</li>
+          <li>저항 0·1에는 R을 붙여 주세요. 예: <b>0R, 1R</b> (안 붙이면 부품명이 부정확할 수 있습니다)</li>
+          <li>잘못된 값은 다음 단계에서 표를 클릭해 바로 고칠 수 있습니다.</li>
+        </ul>
+        <button class="btn ghost sm" type="button" id="sampleBtn" style="justify-self:start">예시 파일로 둘러보기</button>
+      </div>
+    </div>
+
+    <details class="card" style="margin-top:20px">
+      <summary class="lbl" style="cursor:pointer">이전 BOM 결과 다운로드</summary>
+      <div class="row" style="max-width:520px">
+        <input type="text" id="bomNo" placeholder="bom_number" aria-label="bom_number" inputmode="numeric">
+        <button class="btn" type="button" id="bomDl">엑셀 다운로드</button>
+      </div>
+      <p class="hint" id="bomMsg">등록이 끝난 BOM 번호로 결과 엑셀을 받습니다.</p>
+    </details>
+  </section>
+
+  <!-- 2단계: 컬럼 지정 · 수정 -->
+  <section id="step2" hidden aria-labelledby="s2h">
+    <h2 id="s2h" class="sr">2단계 컬럼 지정과 수정</h2>
+    <div style="display:grid;gap:14px">
+      <div class="summary" id="sum2"></div>
+      <div class="toolbar">
+        <div class="tabs" role="tablist" id="sheetTabs" aria-label="시트 선택"></div>
+        <div class="opts">
+          <label>제목 행 <select id="headerRow" aria-label="제목 행"></select></label>
+          <label><input type="checkbox" id="issuesOnly"> 확인 필요한 행만</label>
+          <label><input type="checkbox" id="wrapToggle"> 긴 글 줄바꿈</label>
+        </div>
+      </div>
+      <ul class="notice">
+        <li>수량, 그리고 부품명·풀파트 중 하나는 꼭 지정하세요</li>
+        <li>풀파트를 지정하면 패키지·규격은 없어도 됩니다</li>
+        <li>부품명이 300자 이상인 행은 제외됩니다</li>
+        <li>URL(구매 링크)이 있는 행은 구매대행으로 자동 지정되고 자동변환에서 빠집니다 · 데이터시트(PDF) 링크는 자동 지정하지 않습니다</li>
+        <li id="editNote">셀을 클릭하면 바로 고칠 수 있습니다 · 행을 선택하면 수량·릴·구매대행 옵션을 한꺼번에 바꿉니다</li>
+      </ul>
+      <div class="judge" id="judge" aria-live="polite"></div>
+      <div class="chips" id="chips" aria-live="polite"></div>
+      <div class="bulk" id="bulk" hidden>
+        <span class="cnt" id="bulkCnt"></span>
+        <span class="grp"><label for="bulkQty">수량</label><input type="number" id="bulkQty" min="0" step="1" inputmode="numeric"><button class="btn sm" type="button" id="bulkQtySet">바꾸기</button></span>
+        <span class="grp"><label for="bulkMul">×</label><input type="number" id="bulkMul" min="1" step="1" value="2" inputmode="numeric"><button class="btn sm" type="button" id="bulkMulSet">배수 적용</button><button class="btn sm" type="button" id="bulkQtyReset" title="선택한 행의 수량을 파일에 있던 값으로 되돌립니다">수량 리셋</button></span>
+        <span class="sep"></span>
+        <span class="grp">릴서비스 <button class="btn sm" type="button" data-reel="svc" data-on="1">켜기</button><button class="btn sm" type="button" data-reel="svc" data-on="0">끄기</button></span>
+        <span class="grp">릴패키지 <button class="btn sm" type="button" data-reel="pkg" data-on="1">켜기</button><button class="btn sm" type="button" data-reel="pkg" data-on="0">끄기</button></span>
+        <span class="grp" title="링크가 있는 행에만 적용됩니다">구매대행 <button class="btn sm" type="button" data-buy="1">켜기</button><button class="btn sm" type="button" data-buy="0">끄기</button></span>
+        <button class="btn ghost sm" type="button" id="bulkClear">선택 해제</button>
+      </div>
+      <div class="split">
+        <p class="flash" id="flash" aria-live="polite"></p>
+        <div class="editbar" id="editbar" hidden><span>수정 <b id="editCnt">0</b>건</span><button class="btn ghost sm" type="button" id="revertAll">모두 되돌리기</button></div>
+      </div>
+      <div class="grid-wrap" id="gridWrap"><table class="grid" id="grid"></table></div>
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+
+  <!-- 3단계: 변환 결과 · INQ 등록 -->
+  <section id="step3" hidden aria-labelledby="s3h">
+    <h2 id="s3h" class="sr">3단계 변환 결과와 INQ 등록</h2>
+    <div style="display:grid;gap:14px">
+      <div class="summary" id="sum3"></div>
+      <div><span class="mode" id="modeTag">예시 변환</span></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="toolbar">
+        <div class="tabs" role="tablist" id="resFilter" aria-label="결과 필터">
+          <button type="button" class="tab" role="tab" data-f="all" aria-selected="true">전체</button>
+          <button type="button" class="tab" role="tab" data-f="ok" aria-selected="false">변환됨</button>
+          <button type="button" class="tab" role="tab" data-f="check" aria-selected="false">확인 필요</button>
+          <button type="button" class="tab" role="tab" data-f="none" aria-selected="false">미변환</button>
+          <button type="button" class="tab" role="tab" data-f="link" aria-selected="false" hidden id="linkTab">구매대행 링크</button>
+          <button type="button" class="tab" role="tab" data-f="diff" aria-selected="false" hidden id="diffTab">기존과 다름</button>
+          <button type="button" class="tab" role="tab" data-f="edited" aria-selected="false">직접 수정</button>
+        </div>
+        <span class="hint">변환 품명 셀을 클릭하면 등록 전에 고칠 수 있습니다</span>
+      </div>
+      <div class="grid-wrap" id="resWrap"><table class="grid" id="resGrid"></table></div>
+      <p class="demo" id="demoNote">예시 변환 결과입니다. CONFIG.convertUrl에 서버 주소를 넣으면 FN_BOM_CATEGORY16_261105 · FN_BOM_PN18_261105가 만든 실제 결과로 바뀝니다.</p>
+      <p class="result-msg" id="submitMsg" hidden></p>
+    </div>
+  </section>
+</div>
+
+<footer class="actions">
+  <div class="in">
+    <span class="why" id="why"></span>
+    <div class="btns">
+      <button class="btn" type="button" id="backBtn">뒤로</button>
+      <button class="btn primary" type="button" id="nextBtn">다음</button>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* =========================================================
+   설정 · 서버 연동 지점 — 실제 시스템에 붙일 때 여기만 바꾸면 됩니다.
+   ========================================================= */
+const CONFIG = {
+  canEdit: true,          // 셀 즉석 수정 권한. 로그인 사용자 권한에 따라 서버에서 내려 주세요.
+  maxNameLength: 300,     // 이 글자 수 이상인 부품명 행은 제외
+  previewRows: 200,       // 2단계 표에 그리는 최대 행 수
+
+  /* 자동변환 서버 연결 — 비워 두면 화면 확인용 예시 변환으로 동작합니다.
+     서버 페이지는 받은 JSON을 그대로 USP_BOM_CONVERT_261105 @payload에 넘기고, 돌려받은 json 컬럼을 그대로 응답하면 됩니다. */
+  convertUrl: '',         // 예: '/autobom/convert.ashx'  또는 '/autobom/convert.asp'
+  compareOld: true,       // true: 기존 함수(15/17) 결과를 '기존 결과' 열에 같이 표시 — 검증 기간에만 켜 두세요
+  convertChunk: 200,      // 한 번에 보내는 행 수 (BOM이 커도 요청이 길어지지 않게 나눠 보냄)
+
+  /* 구매대행 링크 — 엑셀 셀의 URL 글자나 하이퍼링크를 찾아 행에 붙입니다. */
+  linkAutoPurchase: true, // 링크가 있는 행을 구매대행으로 자동 지정 (행마다 끌 수 있음)
+  linkDocPattern: /\.pdf(\?|#|$)|datasheet|datasheets?\./i,  // 이 패턴에 맞는 링크(데이터시트)는 자동 지정하지 않음
+
+  /* BOM 판별 — 'BOM 맞음' = RLC(저항·캐패시터·인덕터) bomMinRlc건 이상 + 배수 적용
+     bomNeedMultiplier를 false로 바꾸면 RLC만으로 판정합니다. */
+  bomMinRlc: 1,
+  bomNeedMultiplier: true,
+  rlcRefPrefix: {          // 레퍼런스 앞 글자로 RLC를 가리는 목록 (CN·CON=커넥터, LED·LD=LED, RY·RL=릴레이는 넣지 않음)
+    R: ['R', 'RN', 'RA', 'RP', 'RS', 'VR', 'RV', 'RT', 'TH'],
+    C: ['C', 'CE', 'EC', 'TC', 'BC'],
+    L: ['L', 'FB', 'LF']
+  },
+  rlcCategoryIds: ['2', '3', '5', '6', '7', '16', '17']   // 자동변환 카테고리 중 RLC (CR·Axial·CC·DIP-CERAMIC·CT·Array·전해)
+};
+const API = {
+  async searchCustomers(q) {            // TODO: 고객 검색 API
+    const all = [
+      { number: '100001', name: '홍길동', compId: '2200000001', compName: '예시전자', email: 'buyer@example.com', ems: 0 },
+      { number: '100002', name: '김예시', compId: '2200000002', compName: '샘플테크', email: 'pm@sample.example', ems: 1 }
+    ];
+    const s = q.trim().toLowerCase();
+    return all.filter(c => !s || [c.number, c.name, c.compName].some(v => v.toLowerCase().includes(s)));
+  },
+  async listProjects(customer) {        // TODO: 고객별 프로젝트 목록 API
+    return customer.number === '100001' ? ['(EMS) 릴레이 매트릭스 상태보드 18set', '(EMS) 전원 모듈 REV3', '센서 인터페이스 보드'] : ['컨트롤러 메인보드 v2'];
+  },
+  async createProject(customer, name) { return name },   // TODO: 신규 프로젝트 등록 API
+  /* 카테고리 자동변환: FN_BOM_CATEGORY16_261105 → FN_BOM_PN18_261105 (USP_BOM_CONVERT_261105) */
+  async convert(payload, onProgress) {
+    if (!CONFIG.convertUrl) {
+      return { demo: true, items: payload.items.map(it => withStatus({ ...it, ...demoConvert(it) })) };
+    }
+    const out = new Map(), all = payload.items, size = CONFIG.convertChunk || 200;
+    for (let i = 0; i < all.length; i += size) {
+      const part = all.slice(i, i + size);
+      const body = { compare: !!CONFIG.compareOld, items: part.map(it => ({ row: it.row, ref: str(it.ref), name: str(it.name), part: str(it.part), spec: str(it.spec), pkg: str(it.pkg) })) };
+      const r = await fetch(CONFIG.convertUrl, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body), credentials: 'same-origin' });
+      if (!r.ok) throw new Error(`서버 응답 ${r.status}`);
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      (j.items || []).forEach(x => out.set(+x.row, x));
+      onProgress && onProgress(Math.min(i + size, all.length), all.length);
+    }
+    return {
+      demo: false, compare: !!CONFIG.compareOld,
+      items: all.map(it => {
+        const x = out.get(it.row);
+        if (!x) return { ...it, category: '', result: '', status: 'none', note: '서버 결과 없음' };
+        const res = { ...it, categoryId: x.categoryId || '', category: x.category || '', result: x.result || '', status: x.status || 'none', note: x.note || '', resultOld: x.resultOld ?? null, categoryOld: x.categoryOld ?? null };
+        if (res.status === 'part' && !res.result) res.result = str(it.part);   // 변환 품명이 없으면 풀파트로 등록
+        return res;
+      })
+    };
+  },
+  /* TODO: INQ 등록 API
+     items[].purchase = true 인 행은 구매대행 대상입니다. items[].purchaseUrl(구매 링크)로 구매대행 시스템에 연동하세요.
+     purchase = false 인 행에도 링크가 있으면 purchaseUrl 에 담겨 갑니다(참고용, 예: 데이터시트).
+     bomCheck.isBom / verdict('bom' · 'likely' · 'parts') 로 진짜 BOM인지 구분해 저장하세요. items[].rlc(R·C·L)는 행별 근거입니다. */
+  async registerInq(payload) {
+    console.log('registerInq payload', payload);
+    return { demo: true };
+  },
+  async downloadBom(bomNumber) { return { demo: true } }  // TODO: bom_number 결과 엑셀
+};
+
+/* 예시 변환 — 화면 확인용. 실제 변환은 서버 함수 결과로 대체됩니다. */
+const fmtPf = pf => pf >= 1e6 ? +(pf / 1e6).toPrecision(3) + 'uF' : pf >= 1e3 ? +(pf / 1e3).toPrecision(3) + 'nF' : +pf.toPrecision(3) + 'pF';
+const capCode = c => /R/i.test(c) ? parseFloat(c.replace(/R/i, '.')) : parseInt(c.slice(0, 2), 10) * Math.pow(10, +c[2]);
+/* 제조사 품번 해석 (개선 로직 예시): 자리별 규칙으로 사이즈·값·허용오차·전압·유전체를 읽습니다. */
+function decodePN(pn) {
+  const s = pn.toUpperCase().replace(/\s+/g, '');
+  let m = s.match(/^CL(03|05|10|21|31|32)([CABFXY])(\d{3}|\dR\d)([BCDFGJKMZ])([RQPOALBCDEGH])/);   // Samsung MLCC
+  if (m) {
+    const size = { '03': '0603', '05': '1005', '10': '1608', '21': '2012', '31': '3216', '32': '3225' }[m[1]];
+    const diel = { C: 'C0G', A: 'X5R', B: 'X7R', F: 'Y5V', X: 'X6S', Y: 'X7S' }[m[2]];
+    const volt = { R: '4V', Q: '6.3V', P: '10V', O: '16V', A: '25V', L: '35V', B: '50V', C: '100V', D: '200V', E: '250V', G: '500V', H: '630V' }[m[5]];
+    return { category: 'Chip Capacitor', result: `CC${size}${m[4]}${fmtPf(capCode(m[3]))}${volt}/${diel}`, status: 'ok', note: 'Samsung 품번 해석' };
+  }
+  m = s.match(/^GR[MJ](03|15|18|21|31|32)\w(5C|R6|R7|C7|F5)(0J|1A|1C|1E|1V|1H|2A)(\d{3}|\dR\d)([BCDFGJKMZ])/);   // Murata MLCC
+  if (m) {
+    const size = { '03': '0603', '15': '1005', '18': '1608', '21': '2012', '31': '3216', '32': '3225' }[m[1]];
+    const diel = { '5C': 'C0G', R6: 'X5R', R7: 'X7R', C7: 'X7S', F5: 'Y5V' }[m[2]];
+    const volt = { '0J': '6.3V', '1A': '10V', '1C': '16V', '1E': '25V', '1V': '35V', '1H': '50V', '2A': '100V' }[m[3]];
+    return { category: 'Chip Capacitor', result: `CC${size}${m[5]}${fmtPf(capCode(m[4]))}${volt}/${diel}`, status: 'ok', note: 'Murata 품번 해석' };
+  }
+  m = s.match(/^RC(0201|0402|0603|0805|1206|1210|2010|2512)([BDFGJ])R-\d{2}([0-9]+[RKM][0-9]*)L$/);   // Yageo 칩저항
+  if (m) {
+    const size = { '0201': '0603', '0402': '1005', '0603': '1608', '0805': '2012', '1206': '3216', '1210': '3225', '2010': '5025', '2512': '6432' }[m[1]];
+    return { category: 'Chip Resistor', result: `CR${size}${m[2]}${m[3]}`, status: 'ok', note: 'Yageo 품번 해석' };
+  }
+  return null;
+}
+function demoConvert(it) {
+  if (it.part) return { category: '풀파트', result: it.part, status: 'part' };
+  const dec = decodePN((it.name || '').trim()); if (dec) return dec;
+  const s = (it.name || '') + ' ' + (it.pkg || '') + ' ' + (it.spec || '');
+  const SZ = { '0201': '0603', '0402': '1005', '0603': '1608', '0805': '2012', '1206': '3216' };
+  const sizeOf = () => { const m = s.match(/\b(1005|1608|2012|3216|3225)\b/); if (m) return m[1]; const n = s.match(/\b(0201|0402|0603|0805|1206)\b/); return n ? SZ[n[1]] : '' };
+  const cat = (it.cat || '').toLowerCase();
+  const rv = s.match(/\b(\d+(?:\.\d+)?[RKM]\d*)\b/i);
+  if ((cat === 'cr' || rv) && !/[pnu]F/i.test(s) && rv) {
+    const t = s.match(/(\d+(?:\.\d+)?)\s*%/); const tol = { '5': 'J', '1': 'F', '0.5': 'D', '2': 'G' }[t ? t[1] : ''] || 'F';
+    const z = sizeOf(); if (!z) return { category: 'Chip Resistor', result: '', status: 'none', note: '사이즈 없음' };
+    return { category: 'Chip Resistor', result: `CR${z}${tol}${rv[1].toUpperCase()}`, status: 'ok' };
+  }
+  const cv = s.match(/(\d+(?:\.\d+)?)\s*([pnu])F?\b/i);
+  if (cv && (cat === 'cc' || /CAP/i.test(s))) {
+    const pf = parseFloat(cv[1]) * ({ p: 1, n: 1e3, u: 1e6 }[cv[2].toLowerCase()]);
+    const fmt = fmtPf(pf);
+    const v = s.match(/(\d+(?:\.\d+)?)\s*V\b/i), d = s.match(/\b(C0G|NP0|X7R|X5R|X7S|Y5V)\b/i);
+    return { category: 'Chip Capacitor', result: `CC${sizeOf() || '?'}-${fmt}${v ? v[1] + 'V' : ''}${d ? '/' + d[1].toUpperCase() : ''}`, status: 'ok' };
+  }
+  if (/\bLED\b/i.test(s)) {
+    const c = (s.match(/\b(RED|GREEN|BLUE|WHITE|YELLOW|AMBER)\b/i) || [])[1];
+    return { category: 'LED', result: `LED${sizeOf() || '?'}${c ? c.toUpperCase() : '?'}`, status: 'ok' };
+  }
+  if (/HEADER/i.test(s)) {
+    const p = (s.match(/\b(2\.54|2\.00|1\.27)\b/) || [, '2.54'])[1], rp = s.match(/(\d+)\s*[xX×*]\s*(\d+)/), lead = /R\/A|ANGLE/i.test(s) ? 'R/A' : 'S/T';
+    return { category: '컨넥터', result: `PinHeader${p}${lead}${rp ? rp[1] + '×' + rp[2] : '?'}`, status: 'ok' };
+  }
+  if (/CRYSTAL|X-?TAL/i.test(s)) {
+    const f = s.match(/(\d+(?:\.\d+)?)\s*MHz/i), c = s.match(/(\d+(?:\.\d+)?)\s*pF/i), z = s.match(/(\d\.\d)\s*[xX×*]\s*(\d\.\d)/);
+    return { category: 'X-TAL', result: `X-Tal${f ? f[1] + 'MHz' : '?'}${c ? c[1] + 'pF' : ''}${z ? `(${z[1]}×${z[2]})` : '??'}`, status: 'ok' };
+  }
+  if (/^[A-Z0-9][A-Z0-9-]{7,}$/i.test((it.name || '').trim())) return { category: '', result: '', status: 'none', note: '제조사 품번 · 풀파트로 지정 권장' };
+  return { category: '', result: '', status: 'none', note: '카테고리 없음' };
+}
+
+const str = v => v == null ? '' : String(v).trim();
+/* 예시 변환 결과에도 서버와 같은 상태 규칙 적용: '?' 또는 '(없는스펙)' 이 있으면 확인 필요 */
+function withStatus(x) {
+  if (x.status === 'ok' && /\?|\(없는스펙\)/.test(x.result || '')) { x.status = 'check'; x.note = /없는스펙/.test(x.result) ? '없는 스펙' : '일부 값 못 찾음(?)' }
+  return x;
+}
+
+/* 데이터 유형 정의 — key는 서버로 보내는 필드명 */
+const TYPES = [
+  { key: 'ref',  label: '레퍼런스', words: ['reference', 'ref', 'designator', 'refdes', '레퍼런스', '위치', 'location'] },
+  { key: 'cat',  label: '분류',     words: ['분류', 'category', 'type', '종류'] },
+  { key: 'name', label: '부품명',   words: ['품명', '부품명', 'description', 'desc', 'value', '내용', 'comment'] },
+  { key: 'part', label: '풀파트',   words: ['part', 'part no', 'partno', 'part number', 'p/n', 'pn', 'mpn', '풀파트', '품번', '모델'] },
+  { key: 'spec', label: '규격',     words: ['규격', 'spec', 'specification', 'rating'] },
+  { key: 'pkg',  label: '패키지',   words: ['패키지', 'package', 'footprint', 'pkg', 'case'] },
+  { key: 'mfr',  label: '제조사',   words: ['제조사', 'maker', 'manufacturer', 'mfr', 'mfg', 'vendor', 'brand'] },
+  { key: 'qty',  label: '수량',     words: ['수량', 'qty', 'quantity', 'q\'ty', 'ea', 'count'], req: true },
+  { key: 'tp',   label: 'TP',       words: ['tp'] },
+  { key: 'url',  label: '링크(URL)', words: ['url', 'link', '링크', '구매링크', '구매 링크', '상품링크', '상품 링크', '구매처링크', 'purchase link', 'buy link'] }
+];
+const TYPE = Object.fromEntries(TYPES.map(t => [t.key, t]));
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const colName = i => { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26) } return s };
+const kb = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const isNum = v => /^\d+(\.\d+)?$/.test(String(v).replace(/,/g, '').trim());
+
+const state = { step: 1, customer: null, project: '', projects: [], file: null, sheets: [], sheet: 0, results: null, resFilter: 'all', resEdits: {} };
+
+/* ---------- 1단계 ---------- */
+$('custForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const q = $('custQ').value; $('custErr').hidden = true;
+  if (!q.trim()) { $('custErr').textContent = '회원번호나 고객명을 입력하세요.'; $('custErr').hidden = false; return }
+  const list = await API.searchCustomers(q);
+  if (!list.length) { $('custErr').textContent = `'${q}'에 맞는 고객이 없습니다. 회원번호를 다시 확인하세요.`; $('custErr').hidden = false; $('custResults').hidden = true; return }
+  if (list.length === 1) return pickCustomer(list[0]);
+  $('custResults').innerHTML = list.map((c, i) => `<li><button type="button" data-i="${i}"><span>${esc(c.name)} · ${esc(c.compName)}</span><span class="sub">${esc(c.number)}</span></button></li>`).join('');
+  $('custResults').hidden = false;
+  $('custResults').onclick = ev => { const b = ev.target.closest('button'); if (b) pickCustomer(list[+b.dataset.i]) };
+});
+$('custQ').addEventListener('input', () => { $('custErr').hidden = true });
+async function pickCustomer(c) {
+  state.customer = c;
+  $('custResults').hidden = true; $('custField').hidden = true;
+  $('custTitle').textContent = `${c.name} · ${c.compName}`;
+  $('custKv').innerHTML = [['회원번호', c.number], ['회사번호', c.compId], ['이메일', c.email || '—'], ['EMS 여부', c.ems ? '예' : '아니오']]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
+  $('custBox').hidden = false;
+  state.projects = await API.listProjects(c); state.project = state.projects[0] || '';
+  renderProjects(); $('projField').hidden = false; refresh();
+}
+$('custChange').addEventListener('click', () => {
+  state.customer = null; state.project = '';
+  $('custBox').hidden = true; $('projField').hidden = true; $('custField').hidden = false; $('custQ').focus(); refresh();
+});
+function renderProjects() {
+  const q = $('projQ').value.trim().toLowerCase();
+  const list = state.projects.filter(p => !q || p.toLowerCase().includes(q));
+  $('projSel').innerHTML = list.length ? list.map(p => `<option${p === state.project ? ' selected' : ''}>${esc(p)}</option>`).join('') : '<option value="">맞는 프로젝트가 없습니다</option>';
+  state.project = list.includes(state.project) ? state.project : (list[0] || ''); refresh();
+}
+$('projQ').addEventListener('input', renderProjects);
+$('projSel').addEventListener('change', e => { state.project = e.target.value; refresh() });
+$('projNewBtn').addEventListener('click', () => { $('projNew').hidden = false; $('projNewName').focus() });
+$('projNewCancel').addEventListener('click', () => { $('projNew').hidden = true; $('projNewName').value = '' });
+$('projNewSave').addEventListener('click', async () => {
+  const n = $('projNewName').value.trim(); if (!n) { $('projNewName').focus(); return }
+  const name = await API.createProject(state.customer, n);
+  state.projects.unshift(name); state.project = name; $('projQ').value = '';
+  $('projNew').hidden = true; $('projNewName').value = ''; renderProjects();
+});
+
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over') }));
+['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over') }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f) });
+$('fileInput').addEventListener('change', e => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = '' });
+$('fileRemove').addEventListener('click', () => { state.file = null; state.sheets = []; showFile(); refresh() });
+function readFile(f) {
+  $('fileErr').hidden = true;
+  if (!/\.(xlsx|xls|csv)$/i.test(f.name)) { fileError(`${f.name}은(는) 올릴 수 없는 형식입니다. xlsx, xls, csv 파일을 선택하세요.`); return }
+  if (typeof XLSX === 'undefined') { fileError('엑셀을 읽는 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.'); return }
+  const r = new FileReader();
+  r.onload = () => { try { loadWorkbook(XLSX.read(new Uint8Array(r.result), { type: 'array' }), { name: f.name, size: f.size }) } catch (err) { fileError('파일을 읽지 못했습니다. 암호가 걸려 있거나 손상된 파일인지 확인하세요.') } };
+  r.readAsArrayBuffer(f);
+}
+function fileError(m) { $('fileErr').textContent = m; $('fileErr').hidden = false }
+function trimRows(rows) {
+  rows = rows.map(r => r.map(v => v == null ? '' : String(v).trim()));
+  while (rows.length && rows[rows.length - 1].every(v => v === '')) rows.pop();
+  let w = 0; rows.forEach(r => { for (let i = r.length - 1; i >= 0; i--) if (r[i] !== '') { w = Math.max(w, i + 1); break } });
+  return rows.map(r => { const x = r.slice(0, w); while (x.length < w) x.push(''); return x });
+}
+const norm = s => String(s).toLowerCase().replace(/[\s_\-.:]/g, '');
+function guessType(h) {
+  const n = norm(h); if (!n) return '';
+  for (const t of TYPES) if (t.words.some(w => n === norm(w))) return t.key;
+  for (const t of TYPES) if (t.words.some(w => norm(w).length > 2 && n.includes(norm(w)))) return t.key;
+  return '';
+}
+function detectHeader(rows) {
+  let best = 0, bestScore = 0;
+  rows.slice(0, 10).forEach((r, i) => { const s = r.filter(v => guessType(v)).length; if (s > bestScore) { bestScore = s; best = i } });
+  return bestScore >= 2 ? best : 0;
+}
+function autoMap(sh) {
+  const used = new Set(); sh.map = {};
+  (sh.rows[sh.header] || []).forEach((h, i) => { const t = guessType(h); if (t && !used.has(t)) { sh.map[i] = t; used.add(t) } });
+}
+function loadWorkbook(wb, meta) {
+  const sheets = wb.SheetNames.map(name => {
+    const rows = trimRows(XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: '' }));
+    const sh = { name, rows, header: detectHeader(rows), map: {}, orig: {}, unsel: new Set(), manualOn: new Set(), qtyBase: {}, mul: {}, reel: { svc: new Set(), pkg: new Set() },
+                 links: sheetLinks(wb.Sheets[name]), buyOn: new Set(), buyOff: new Set() };
+    autoMap(sh); return sh;
+  }).filter(s => s.rows.length);
+  if (!sheets.length) { fileError('내용이 있는 시트가 없습니다.'); return }
+  state.file = meta; state.sheets = sheets; state.results = null;
+  state.sheet = Math.max(0, sheets.findIndex(s => Object.values(s.map).some(t => t === 'name' || t === 'part')));
+  showFile(); refresh();
+}
+function showFile() {
+  const f = state.file;
+  $('fileBox').hidden = !f; $('drop').hidden = !!f;
+  if (!f) return;
+  $('fileExt').textContent = (f.name.split('.').pop() || '').toUpperCase().slice(0, 4);
+  $('fileName').textContent = f.name; $('fileName').title = f.name;
+  $('fileSub').textContent = `${kb(f.size)} · 시트 ${state.sheets.length}개 · ${state.sheets.map(s => s.name).join(', ')}`;
+}
+$('tplBtn').addEventListener('click', () => {
+  if (typeof XLSX === 'undefined') { fileError('양식을 만들 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.'); return }
+  const ws = XLSX.utils.aoa_to_sheet([['Reference', '분류', '품명', '규격', '패키지', '제조사', '수량', 'TP', '구매링크'], ['R6', 'cr', '10R / 5% / 1608', '', '', 'ANY', 100, '', ''], ['M1', '', 'DC FAN 5V 30x30', '', '', '', 2, '', 'https://shop.example.com/item/12345']]);
+  ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 40 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'BOM');
+  XLSX.writeFile(wb, 'AUTO_BOM_양식.xlsx');
+});
+$('sampleBtn').addEventListener('click', () => {
+  if (typeof XLSX === 'undefined') { fileError('예시를 만들 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.'); return }
+  const caps = Array.from({ length: 38 }, (_, i) => 'C' + (i + 1)).join(',');
+  const a = [
+    ['예시 BOM — 릴레이 매트릭스 보드'], [],
+    ['Reference', '분류', '품명', '규격', '패키지', '제조사', '수량', 'TP', '구매링크'],
+    ['R1,R2,R3,R4', 'cr', '10K / 5% / 1608', '', '1608', 'ANY', 4, ''],
+    ['R6', 'cr', '10R / 5% / 1608', '', '', 'ANY', 100, ''],
+    [caps, 'cc', 'CAP CER 0.1UF 50V X7R 0603', '', '0603', 'SAMSUNG', 38, ''],
+    ['C40', 'cc', 'CL10B104KB8NNNC', '', '', 'SAMSUNG', 2, ''],
+    ['U1', 'ic', 'STM32F407VGT6 ARM Cortex-M4 MCU 1MB Flash 168MHz LQFP-100, 고객 지정 품번 사용, 대체품 불가, 리드타임 확인 필요', '', 'LQFP-100', 'ST', 1, ''],
+    ['D1,D2', 'led', 'LED RED 1608', '', '1608', '', 2, ''],
+    ['J1', 'con', 'PIN HEADER 2.54 2x20 S/T', '', '', '', 1, ''],
+    ['Y1', 'xtal', 'CRYSTAL 16MHz 12pF 3.2x2.5', '', '', '', 1, ''],
+    ['R20', 'cr', '', '', '', '', 1, ''],
+    ['R21', 'cr', '1K / 1% / 1608', '', '', '', '1개', ''],
+    ['M1', 'etc', 'DC FAN 5V 30x30', '', '', '', 2, '', 'https://shop.example.com/item/12345'],
+    ['SW1', 'etc', 'TACT SWITCH 6x6 (구매처 www.parts.example.com/p/SW-66)', '', '', '', 4, '', ''],
+    ['U2', 'ic', 'LDO 3.3V 1A SOT-223', '', '', 'TI', 1, '', 'https://www.example.com/datasheet/ldo33.pdf'],
+    ['BZ1', 'etc', 'BUZZER 12mm 5V', '', '', '', 1, '', '구매 링크']
+  ];
+  const b = [
+    ['Designator', 'Description', 'Manufacturer Part Number', 'Footprint', 'Manufacturer', 'Qty'],
+    ['C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12', 'Capacitor 100nF 50V X7R ±10%', 'GRM188R71H104KA01D', '', 'Murata', '12'],
+    ['L1', 'Inductor 10uH 1A', 'LQH3NPN100MM0L', '', 'Murata', '1'],
+    ['Q1', 'N-MOSFET 30V 5A SOT-23', 'AO3400A', '', 'AOS', '1']
+  ];
+  const wb = XLSX.utils.book_new(), wsA = XLSX.utils.aoa_to_sheet(a);
+  const bz = XLSX.utils.encode_cell({ r: a.length - 1, c: 8 });
+  wsA[bz].l = { Target: 'https://shop.example.com/item/77810', Tooltip: '구매 링크' };   // 엑셀 하이퍼링크 예시 (글자는 '구매 링크')
+  XLSX.utils.book_append_sheet(wb, wsA, 'BOM');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(b), 'sheet 2');
+  loadWorkbook(wb, { name: '예시_BOM.xlsx (예시 데이터)', size: 9216 });
+  if (!state.customer) API.searchCustomers('100001').then(l => pickCustomer(l[0]));
+});
+$('bomDl').addEventListener('click', async () => {
+  const n = $('bomNo').value.trim();
+  if (!n) { $('bomMsg').textContent = 'bom_number를 입력하세요.'; $('bomNo').focus(); return }
+  const r = await API.downloadBom(n);
+  $('bomMsg').textContent = r.demo ? `예시 화면입니다. 서버에 연결하면 BOM ${n}의 결과 엑셀을 받습니다.` : `BOM ${n} 다운로드를 시작했습니다.`;
+});
+
+/* ---------- 구매대행 링크 ---------- */
+const URL_RE = /(https?:\/\/[^\s"'<>]+|www\.[^\s"'<>]+)/i;
+const safeUrl = u => { u = String(u || '').trim().replace(/[),.;]+$/, ''); if (/^www\./i.test(u)) u = 'https://' + u; return /^https?:\/\/[^\s]+$/i.test(u) ? u : '' };
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, '') } catch (_) { return u } };
+const isDocLink = u => CONFIG.linkDocPattern.test(u);
+/* 행의 링크: ① '링크(URL)'로 지정한 열 → ② 셀 하이퍼링크 → ③ 셀 글자 속 URL 순서로 찾습니다. */
+function rowLink(sh, i, colOf) {
+  const r = sh.rows[i] || [], cols = r.map((_, c) => c);
+  const fromCell = c => {
+    const key = i + ',' + c;
+    const h = !(key in sh.orig) && sh.links[key] ? safeUrl(sh.links[key]) : '';
+    if (h) return h;
+    const m = String(r[c] || '').match(URL_RE); return m ? safeUrl(m[1]) : '';
+  };
+  if (colOf.url != null) { const u = fromCell(colOf.url); if (u) return { url: u, c: colOf.url } }
+  for (const c of cols) { const key = i + ',' + c; if (!(key in sh.orig) && sh.links[key]) { const u = safeUrl(sh.links[key]); if (u) return { url: u, c } } }
+  for (const c of cols) { const m = String(r[c] || '').match(URL_RE); const u = m ? safeUrl(m[1]) : ''; if (u) return { url: u, c } }
+  return null;
+}
+const isBuy = (sh, i, link) => !!link && (sh.buyOn.has(i) || (!sh.buyOff.has(i) && CONFIG.linkAutoPurchase && !isDocLink(link.url)));
+/* 엑셀 하이퍼링크(표시 글자와 실제 주소가 다른 셀)를 'r,c' → 주소로 모읍니다. */
+function sheetLinks(ws) {
+  const out = {}; if (!ws || !ws['!ref']) return out;
+  const s = XLSX.utils.decode_range(ws['!ref']).s;
+  Object.keys(ws).forEach(k => {
+    if (k[0] === '!') return; const cell = ws[k];
+    const f = cell && typeof cell.f === 'string' && cell.f.match(/HYPERLINK\(\s*"([^"]+)"/i);   // =HYPERLINK("주소","글자") 수식
+    const t = cell && cell.l && cell.l.Target ? cell.l.Target : f ? f[1] : '';
+    if (t) { const a = XLSX.utils.decode_cell(k); out[(a.r - s.r) + ',' + (a.c - s.c)] = t }
+  });
+  return out;
+}
+
+/* ---------- BOM 판별 ----------
+   행마다 RLC(R 저항 · C 캐패시터 · L 인덕터)인지 봅니다.
+   ① 레퍼런스가 있으면 레퍼런스 앞 글자로만 판단 (R1·C12·L3 → RLC, U1·D1·CN1 → RLC 아님)
+   ② 레퍼런스가 없으면 부품명·풀파트·분류로 판단. 강한 근거부터 차례로 봅니다.
+      a. 절대 RLC가 아닌 부품명 (크리스탈·발진자·LED·다이오드) → 아님   예) 'CRYSTAL 16MHz 12pF'의 12pF는 무시
+      b. 부품 종류 단어 (RES·CAP·MLCC·IND·BEAD·저항·콘덴서 …)
+      c. 제조사 품번 앞자리 (RC0603·ERJ· → R, GRM·CL10· → C, LQH·BLM· → L)
+      d. 다른 부품 단어 (IC·커넥터·스위치·MOSFET …) → 아님
+      e. 단위 (0.1uF · 10uH · 100Ω)
+      f. 저항값 표기 (10K · 4K7 · 10R · 1M)
+      g. 분류 열 (cr · cc · ct · res · cap …)
+   ③ 3단계에서는 자동변환 카테고리(CR·CC·CT·전해·Array …)로 한 번 더 확인해 놓친 RLC를 더합니다. */
+const RLC_LABEL = { R: '저항', C: '캐패시터', L: '인덕터' };
+const RLC_HARD_NEG = /\b(CRYSTAL|XTAL|X-TAL|OSC|OSCILLATOR|RESONATOR|LED|DIODE|ZENER|TVS|SCHOTTKY)\b|크리스탈|발진|다이오드/i;
+const RLC_WORD = {
+  R: /\b(RES|RESISTOR|RESISTANCE|THERMISTOR|NTC|PTC|POT|POTENTIOMETER|TRIMMER|SHUNT)\b|저항|써미스터|서미스터/i,
+  C: /\b(CAP|CAPS|CAPACITOR|MLCC|ELCO|ELECT|ELECTROLYTIC|TANTAL|TANTALUM|CERAMIC|FILM\s*CAP)\b|콘덴서|캐패시터|커패시터|캐퍼시터|전해|탄탈|세라믹/i,
+  L: /\b(IND|INDUCTOR|INDUCTANCE|BEAD|FERRITE|CHOKE|COIL)\b|인덕터|비드|코일|초크/i
+};
+const RLC_MPN = {
+  R: /^(RC\d{4}|ERJ|ERA|CRCW|RMC|MCR|RK73|RR\d{4}|AC\d{4}|RT\d{4}|WR\d{2}|CR\d{4}|RCS\d|PMR|LTR\d)/i,
+  C: /^(GRM|GCM|GJM|GRT|CL\d{2}[A-Z]|CC\d{4}|CGA|C\d{4}[A-Z]\d|EMK|UMK|TMK|JMK|LMK|GMK|EEE|EEU|UVR|UUD|UWX|TAJ|TPS[A-Z]|T49\d|293D|F93|ECA|ECJ)/i,
+  L: /^(LQH|LQM|LQG|LQW|BLM|MLZ|MPZ|SRN|SRR|SRU|CDRH|NR\d{4}|VLS|VLF|IHLP|LPS|XAL|XFL|DFE|MLF|ACM|CIG|CIH|CIM)/i
+};
+const RLC_NEG = /\b(IC|MCU|CPU|LDO|REGULATOR|EEPROM|FLASH|MEMORY|MOSFET|FET|TRANSISTOR|BJT|CONN|CONNECTOR|HEADER|SOCKET|TERMINAL|SWITCH|SW|RELAY|FUSE|BUZZER|SPEAKER|FAN|BATTERY|PCB|SCREW|BOLT|CABLE|WIRE|TRANSFORMER|HOLDER|JACK|USB|HDMI|SENSOR|MODULE|OPAMP|DRIVER|PHOTOCOUPLER|OPTO|MOTOR|HEATSINK|SHIELD)\b|커넥터|컨넥터|스위치|퓨즈|트랜지스터|센서|모듈|부저|릴레이|케이블|나사|방열/i;
+const RLC_UNIT = {
+  C: /\d+(\.\d+)?\s*(p|n|u|µ|μ)\s*F\b|\d*(\.\d+)?\s*[㎊㎋㎌]|\b(X7R|X5R|X7S|X6S|X8R|C0G|COG|NP0|NPO|Y5V|Z5U)\b/i,
+  L: /\d+(\.\d+)?\s*(n|u|µ|μ|m)\s*H\b/i,
+  R: /\d+(\.\d+)?\s*(k|m)?\s*(Ω|ohms?\b)|\d*(\.\d+)?\s*[㏀㏁]/i
+};
+const RLC_RVAL = /(^|[\s\/,(])(\d+(\.\d+)?\s?[KkM]|\d+[RKM]\d+|\d+(\.\d+)?R)(?=$|[\s\/,)%_])/;
+const RLC_CAT = { R: /^(cr|r|res|resistor|저항|ra|rn|array|axial)$/i, C: /^(cc|c|cap|mlcc|ct|ce|ec|tantal|전해|탄탈|콘덴서|캐패시터|dip-?ceramic)$/i, L: /^(l|ind|inductor|bead|인덕터|비드)$/i };
+
+function refParse(s) {
+  const pre = new Set(); let count = 0;
+  String(s || '').toUpperCase().split(/[,;\s]+/).filter(Boolean).forEach(t => {
+    const m = t.match(/^([A-Z]+)(\d+)(?:[-~]([A-Z]*)(\d+))?$/); if (!m) return;
+    pre.add(m[1]); count += m[4] ? Math.min(1000, Math.max(1, +m[4] - +m[2] + 1)) : 1;
+  });
+  return { pre: [...pre], count };
+}
+const short = (v, n = 28) => { v = String(v || ''); return v.length > n ? v.slice(0, n) + '…' : v };
+function rlcOfText(name, part, cat) {
+  const text = [name, part].filter(Boolean).join(' ');
+  if (text && RLC_HARD_NEG.test(text)) return null;
+  for (const t of ['R', 'C', 'L']) { const m = text.match(RLC_WORD[t]); if (m) return { t, by: 'name', why: `부품 종류 단어 '${m[0]}'` } }
+  for (const v of [part, name]) for (const tok of String(v || '').split(/[\s,\/]+/)) for (const t of ['R', 'C', 'L']) if (tok && RLC_MPN[t].test(tok)) return { t, by: 'name', why: `품번 '${short(tok, 20)}'` };
+  if (text && RLC_NEG.test(text)) return null;
+  for (const t of ['C', 'L', 'R']) { const m = text.match(RLC_UNIT[t]); if (m) return { t, by: 'name', why: `${/^[A-Z]/i.test(m[0].trim()) ? '유전체' : '단위'} '${m[0].trim()}'` } }
+  const rv = String(name || '').match(RLC_RVAL); if (rv) return { t: 'R', by: 'name', why: `저항값 '${rv[2]}'` };
+  for (const t of ['R', 'C', 'L']) if (cat && RLC_CAT[t].test(String(cat).trim())) return { t, by: 'cat', why: `분류 '${cat}'` };
+  return null;
+}
+function classifyRow(sh, i, colOf) {
+  const r = sh.rows[i] || [], get = k => colOf[k] != null ? String(r[colOf[k]] || '').trim() : '';
+  const ref = get('ref');
+  if (ref) {
+    const p = refParse(ref);
+    if (p.pre.length) {
+      for (const t of ['R', 'C', 'L']) if (p.pre.some(x => CONFIG.rlcRefPrefix[t].includes(x))) return { t, by: 'ref', why: `레퍼런스 ${short(ref, 24)}`, refCount: p.count };
+      return { t: '', by: 'ref', why: `레퍼런스 ${short(ref, 24)}`, refCount: p.count };
+    }
+  }
+  const x = rlcOfText(get('name'), get('part'), get('cat'));
+  return x ? { ...x, refCount: 0 } : { t: '', by: '', why: '', refCount: 0 };
+}
+function verdictOf(rlc, mul) {
+  const ok = rlc >= CONFIG.bomMinRlc;
+  if (!ok) return { v: 'parts', label: 'BOM 아님 · 일반 부품', msg: `RLC가 ${CONFIG.bomMinRlc}건 미만입니다.` };
+  if (CONFIG.bomNeedMultiplier && !mul) return { v: 'likely', label: 'BOM 추정 · 배수 미적용', msg: 'RLC가 있지만 배수가 적용되지 않았습니다. 세트 수량만큼 배수를 적용하세요.' };
+  return { v: 'bom', label: 'BOM 맞음', msg: CONFIG.bomNeedMultiplier ? 'RLC가 있고 배수가 적용됐습니다.' : 'RLC가 있습니다.' };
+}
+/* 시트 전체 판별 — 제외 행(부품명 없음·300자 이상)은 보지 않습니다. */
+function bomCheck(sh, a) {
+  a = a || analyze(sh);
+  const rows = a.rows.filter(x => x.st === '' || x.st === 'qty'), list = [];
+  let byRef = 0, byName = 0, refRows = 0, match = 0, qtyRows = 0;
+  const type = { R: 0, C: 0, L: 0 };
+  rows.forEach(x => {
+    const c = classifyRow(sh, x.i, a.colOf);
+    if (c.refCount) {
+      refRows++;
+      const q = a.colOf.qty != null ? String(sh.qtyBase[x.i] ?? sh.rows[x.i][a.colOf.qty]).replace(/,/g, '') : '';
+      if (isNum(q)) { qtyRows++; if (+q === c.refCount) match++ }
+    }
+    if (c.t) { type[c.t]++; c.by === 'ref' ? byRef++ : byName++; list.push({ row: x.i + 1, ...c }) }
+  });
+  const rlc = byRef + byName, mul = rows.some(x => (sh.mul[x.i] || 1) > 1);
+  const auto = verdictOf(rlc, mul), ovr = sh.bomOverride || '';
+  const final = ovr === 'bom' ? { v: 'bom', label: 'BOM (직접 지정)', msg: '담당자가 BOM으로 지정했습니다.' } : ovr === 'parts' ? { v: 'parts', label: '일반 부품 (직접 지정)', msg: '담당자가 일반 부품으로 지정했습니다.' } : auto;
+  return { rows: rows.length, rlc, byRef, byName, type, refRows, refQtyMatch: match, refQtyRows: qtyRows, multiplierApplied: mul, auto, override: ovr, final, list };
+}
+function renderJudge(sh, a) {
+  const b = bomCheck(sh, a), f = b.final;
+  const refNote = b.rows ? (b.refRows ? `레퍼런스 있는 행 <b>${b.refRows}</b>/${b.rows}건${b.refQtyRows ? ` · 레퍼런스 개수 = 수량 <b>${b.refQtyMatch}</b>/${b.refQtyRows}건` : ''}` : '레퍼런스 없음 · 부품명으로 판단') : '';
+  const rlcTxt = `RLC ${CONFIG.bomMinRlc}건 이상 — <b>${b.rlc}</b>건 (저항 ${b.type.R} · 캐패시터 ${b.type.C} · 인덕터 ${b.type.L}${b.rlc ? ` / 레퍼런스 ${b.byRef} · 부품명 ${b.byName}` : ''})`;
+  const lst = b.list.slice(0, 300).map(x => `<tr><td class="n">${x.row}</td><td class="t">${x.t}</td><td>${RLC_LABEL[x.t]}</td><td>${esc(x.why)}</td></tr>`).join('');
+  $('judge').innerHTML = `<div class="jtop"><span class="jtitle">BOM 판별</span><span class="vd ${f.v}">${esc(f.label)}</span><span class="jtitle">${esc(f.msg)}</span>
+      <label class="ovr">판정 <select id="bomOverride" aria-label="BOM 판정 직접 지정"><option value="">자동</option><option value="bom"${b.override === 'bom' ? ' selected' : ''}>BOM으로 지정</option><option value="parts"${b.override === 'parts' ? ' selected' : ''}>일반 부품으로 지정</option></select></label></div>
+    <ul class="jchk"><li class="${b.rlc >= CONFIG.bomMinRlc ? '' : 'no'}">${rlcTxt}</li>${CONFIG.bomNeedMultiplier ? `<li class="${b.multiplierApplied ? '' : 'no'}">배수 적용 — <b>${b.multiplierApplied ? '적용함' : '적용 안 함'}</b></li>` : ''}${refNote ? `<li class="info">${refNote}</li>` : ''}</ul>
+    ${b.list.length ? `<details><summary>RLC로 본 행 ${b.list.length}건 · 근거 보기</summary><div class="jlist"><table><thead><tr><th>행</th><th colspan="2">구분</th><th>근거</th></tr></thead><tbody>${lst}</tbody></table></div></details>` : ''}`;
+  return b;
+}
+$('judge').addEventListener('change', e => { if (e.target.id !== 'bomOverride') return; cur().bomOverride = e.target.value; keepScroll('gridWrap', render2) });
+const isRlcCategory = x => CONFIG.rlcCategoryIds.includes(String(x.categoryId ?? '')) || /resistor|capacitor|inductor|tantal|array|전해|저항|캐패시터|인덕터/i.test(x.category || '');
+
+/* ---------- 2단계: 분석 ---------- */
+const cur = () => state.sheets[state.sheet];
+function analyze(sh) {
+  const colOf = {}; Object.entries(sh.map).forEach(([i, t]) => { colOf[t] = +i });
+  const out = { total: 0, ok: 0, empty: 0, long: 0, qty: 0, link: 0, buy: 0, rows: [], status: {}, links: {}, buyRow: {}, colOf };
+  sh.rows.forEach((r, i) => {
+    if (i <= sh.header || r.every(v => v === '')) return;
+    out.total++;
+    const name = colOf.name != null ? r[colOf.name] : '', part = colOf.part != null ? r[colOf.part] : '', qty = colOf.qty != null ? r[colOf.qty] : '';
+    const link = rowLink(sh, i, colOf), buy = isBuy(sh, i, link);
+    if (link) { out.links[i] = link; out.link++ }
+    if (buy) { out.buyRow[i] = true; out.buy++ }
+    let st = '';
+    if (!name && !part && !buy) { st = 'empty'; out.empty++ }   // 구매대행 행은 링크만 있어도 됨
+    else if (name.length >= CONFIG.maxNameLength) { st = 'long'; out.long++ }
+    else { out.ok++; if (colOf.qty != null && !isNum(qty)) { st = 'qty'; out.qty++ } }
+    out.rows.push({ i, st }); out.status[i] = st;
+  });
+  return out;
+}
+const dataRows = sh => { const a = analyze(sh); return a.rows.map(x => x.i) };
+/* 기본 선택: 확인이 필요 없는 행은 모두 선택, 확인 필요(부품명 없음·300자 이상·수량 확인) 행은 선택 안 함.
+   사용자가 직접 끈 행(unsel)과 직접 켠 확인 필요 행(manualOn)만 따로 기억합니다. */
+const isSel = (sh, i, a) => (a.status[i] === '' ? !sh.unsel.has(i) : sh.manualOn.has(i));
+
+/* ---------- 2단계: 그리기 ---------- */
+function renderTabs() {
+  $('sheetTabs').innerHTML = state.sheets.map((s, i) => `<button type="button" class="tab" role="tab" aria-selected="${i === state.sheet}" data-i="${i}" title="${esc(s.name)}"><span class="t">${esc(s.name)}</span><span class="c">${analyze(s).total}건</span></button>`).join('');
+}
+$('sheetTabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; state.sheet = +b.dataset.i; render2() });
+$('headerRow').addEventListener('change', e => { const sh = cur(); sh.header = +e.target.value; autoMap(sh); sh.unsel.clear(); sh.manualOn.clear(); flash(`${sh.header + 1}행을 제목 행으로 쓰고 컬럼을 다시 추정했습니다.`); render2() });
+$('issuesOnly').addEventListener('change', () => render2());
+$('wrapToggle').addEventListener('change', e => { ['grid', 'resGrid'].forEach(id => $(id).classList.toggle('wrap', e.target.checked)); try { localStorage.setItem('autobomWrap', e.target.checked ? '1' : '') } catch (_) {} });
+try { if (localStorage.getItem('autobomWrap')) { $('wrapToggle').checked = true; ['grid', 'resGrid'].forEach(id => $(id).classList.add('wrap')) } } catch (_) {}
+let flashTimer;
+function flash(m) { $('flash').textContent = m; clearTimeout(flashTimer); flashTimer = setTimeout(() => { $('flash').textContent = '' }, 4500) }
+function keepScroll(wrapId, fn) { const w = $(wrapId), l = w.scrollLeft, t = w.scrollTop; fn(); w.scrollLeft = l; w.scrollTop = t }
+
+function render2() {
+  const sh = cur(); if (!sh) return;
+  renderTabs();
+  $('sum2').innerHTML = `<div><span>고객</span> <b>${esc(state.customer?.name)} · ${esc(state.customer?.compName)}</b></div><div><span>프로젝트</span> <b>${esc(state.project)}</b></div><div><span>파일</span> <b>${esc(state.file?.name)}</b></div>`;
+  $('headerRow').innerHTML = sh.rows.slice(0, Math.min(10, sh.rows.length)).map((_, i) => `<option value="${i}"${i === sh.header ? ' selected' : ''}>${i + 1}행</option>`).join('');
+  $('editNote').hidden = !CONFIG.canEdit;
+  const a = analyze(sh), width = sh.rows[0] ? sh.rows[0].length : 0, only = $('issuesOnly').checked;
+  const data = new Set(a.rows.map(x => x.i));
+  const opts = sel => `<option value="">사용 안 함</option>` + TYPES.map(t => `<option value="${t.key}"${t.key === sel ? ' selected' : ''}>${t.label}${t.req ? ' *' : ''}</option>`).join('');
+  const allSel = a.rows.length && a.rows.every(x => isSel(sh, x.i, a));
+  const allReel = k => a.rows.length && a.rows.every(x => sh.reel[k].has(x.i));
+  let h = `<thead><tr class="letters"><th class="rn" rowspan="2"><div class="rh"><input type="checkbox" id="selAll" aria-label="데이터 행 모두 선택"${allSel ? ' checked' : ''}>행</div></th>
+    <th class="opt" rowspan="2"><label><input type="checkbox" class="reelall" data-k="svc"${allReel('svc') ? ' checked' : ''}>릴서비스</label></th>
+    <th class="opt" rowspan="2"><label><input type="checkbox" class="reelall" data-k="pkg"${allReel('pkg') ? ' checked' : ''}>릴패키지</label></th>
+    <th class="opt" rowspan="2"><label title="링크가 있는 행만 지정됩니다"><input type="checkbox" id="buyAll"${a.link && a.rows.filter(x => a.links[x.i]).every(x => a.buyRow[x.i]) ? ' checked' : ''}${a.link ? '' : ' disabled'}>구매대행</label></th>`;
+  for (let c = 0; c < width; c++) h += `<th class="${sh.map[c] ? '' : 'dim'}">${colName(c)}</th>`;
+  h += '</tr><tr class="types">';
+  for (let c = 0; c < width; c++) h += `<th class="${sh.map[c] ? 'mapped' : ''}"><select class="type" data-c="${c}" aria-label="${colName(c)}열 데이터 유형">${opts(sh.map[c] || '')}</select></th>`;
+  h += '</tr></thead><tbody>';
+  let drawn = 0;
+  for (let i = 0; i < sh.rows.length && drawn < CONFIG.previewRows; i++) {
+    const r = sh.rows[i], isData = data.has(i), st = i === sh.header ? 'head' : (a.status[i] || '');
+    if (only && !(st === 'empty' || st === 'long' || st === 'qty')) continue;
+    drawn++;
+    let pill = '';
+    if (st === 'head') pill = '<span class="pill h">제목</span>';
+    else if (st === 'empty') pill = `<button type="button" class="pill" data-fix="${a.colOf.name != null ? 'name' : 'part'}" data-r="${i}">부품명 없음</button>`;
+    else if (st === 'long') pill = `<button type="button" class="pill" data-fix="name" data-r="${i}">300자 이상</button>`;
+    else if (st === 'qty') pill = `<button type="button" class="pill w" data-fix="qty" data-r="${i}">수량 확인</button>`;
+    const lk = isData && a.links[i];
+    if (lk) pill += `<a class="pill l" href="${esc(lk.url)}" target="_blank" rel="noopener noreferrer" title="${esc(lk.url)}">링크</a>`;
+    const cls = [st === 'head' ? 'headrow' : '', (st === 'empty' || st === 'long' || (i < sh.header)) ? 'skip' : '', isData && isSel(sh, i, a) ? 'sel' : ''].join(' ');
+    h += `<tr class="${cls}"><td class="rn"><div class="rh">${isData ? `<input type="checkbox" class="rsel" data-r="${i}" aria-label="${i + 1}행 선택"${isSel(sh, i, a) ? ' checked' : ''}>` : '<span style="width:16px"></span>'}${i + 1}</div>${pill}</td>`;
+    h += isData ? `<td class="opt"><input type="checkbox" class="reel" data-k="svc" data-r="${i}" aria-label="${i + 1}행 릴서비스"${sh.reel.svc.has(i) ? ' checked' : ''}></td><td class="opt"><input type="checkbox" class="reel" data-k="pkg" data-r="${i}" aria-label="${i + 1}행 릴패키지"${sh.reel.pkg.has(i) ? ' checked' : ''}></td><td class="opt"><input type="checkbox" class="buy" data-r="${i}" aria-label="${i + 1}행 구매대행"${a.buyRow[i] ? ' checked' : ''}${lk ? ` title="${esc(lk.url)}"` : ' disabled title="링크가 없는 행"'}></td>` : '<td class="opt"></td><td class="opt"></td><td class="opt"></td>';
+    for (let c = 0; c < width; c++) {
+      const v = r[c] || '', key = i + ',' + c, edited = key in sh.orig;
+      const title = edited ? `원래 값: ${sh.orig[key] || '(빈 칸)'}` : v;
+      h += `<td class="cell${sh.map[c] ? '' : ' dim'}${isData ? ' ed' : ''}${edited ? ' edited' : ''}" data-r="${i}" data-c="${c}" title="${esc(title)}"><div class="clamp">${esc(v)}${c === a.colOf.qty && sh.mul[i] ? `<span class="mul">×${sh.mul[i]}</span>` : ''}</div></td>`;
+    }
+    h += '</tr>';
+  }
+  if (!drawn) h += `<tr><td class="rn"></td><td class="opt"></td><td class="opt"></td><td class="opt"></td><td class="cell" colspan="${Math.max(1, width)}">확인이 필요한 행이 없습니다.</td></tr>`;
+  h += '</tbody>';
+  $('grid').innerHTML = h;
+  $('grid').classList.toggle('editable', CONFIG.canEdit);
+  const more = sh.rows.length > CONFIG.previewRows ? ` · 화면에는 앞 ${CONFIG.previewRows}건만 표시` : '';
+  $('stats').innerHTML = `<span>데이터 <b>${a.total}</b>건</span><span>변환 대상 <b>${a.ok}</b>건</span><span>제외 <b>${a.empty + a.long}</b>건 (부품명 없음 ${a.empty} · 300자 이상 ${a.long})</span><span>수량 확인 <b>${a.qty}</b>건</span><span>릴서비스 <b>${a.rows.filter(x => sh.reel.svc.has(x.i)).length}</b> · 릴패키지 <b>${a.rows.filter(x => sh.reel.pkg.has(x.i)).length}</b></span><span>링크 <b>${a.link}</b>건 · 구매대행 <b>${a.buy}</b>건</span>${more}`;
+  renderJudge(sh, a);
+  const nameOrPart = a.colOf.name != null || a.colOf.part != null;
+  $('chips').innerHTML = TYPES.map(t => {
+    const c = a.colOf[t.key], need = t.req || ((t.key === 'name' || t.key === 'part') && !nameOrPart);
+    const tail = c != null ? `<span class="col">${colName(c)}</span>` : need ? (t.req ? ' · 지정 필요' : ' · 둘 중 하나') : '';
+    return `<span class="chip ${c != null ? 'set' : need ? 'req' : ''}">${t.label}${t.req ? ' *' : ''}${tail}</span>`;
+  }).join('');
+  const edits = Object.keys(sh.orig).length;
+  $('editbar').hidden = !edits; $('editCnt').textContent = edits;
+  const n = a.rows.filter(x => isSel(sh, x.i, a)).length, issues = a.rows.filter(x => x.st !== '').length;
+  $('bulk').hidden = !n; $('bulkCnt').textContent = `${n}건 선택${issues ? ` (확인 필요 ${issues}건 제외)` : ''}`;
+  $('bulkQtySet').disabled = $('bulkMulSet').disabled = $('bulkQtyReset').disabled = a.colOf.qty == null || !CONFIG.canEdit;
+  refresh();
+}
+
+/* ---------- 2단계: 편집 ---------- */
+function setCell(sh, r, c, v) {
+  const key = r + ',' + c, before = sh.rows[r][c];
+  if (v === before) return false;
+  if (!(key in sh.orig)) sh.orig[key] = before;
+  sh.rows[r][c] = v;
+  if (sh.orig[key] === v) delete sh.orig[key];
+  return true;
+}
+function startEdit(td, onCommit, initial) {
+  if (td.classList.contains('editing')) return;
+  const old = initial ?? td.textContent;
+  td.classList.add('editing');
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.value = old; inp.setAttribute('aria-label', '셀 수정');
+  td.innerHTML = ''; td.appendChild(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = save => { if (done) return; done = true; onCommit(save ? inp.value.trim() : null) };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true) }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false) }
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+function editGridCell(td) {
+  const sh = cur(), r = +td.dataset.r, c = +td.dataset.c;
+  startEdit(td, v => {
+    if (v != null && setCell(sh, r, c, v)) {
+      if (c === analyze(sh).colOf.qty) { delete sh.qtyBase[r]; delete sh.mul[r] }
+      flash(`${r + 1}행 ${colName(c)}열을 고쳤습니다.`);
+    }
+    keepScroll('gridWrap', render2);
+  }, sh.rows[r][c]);
+}
+$('grid').addEventListener('click', e => {
+  const fix = e.target.closest('button.pill[data-fix]');
+  if (fix) {
+    if (!CONFIG.canEdit) return;
+    const a = analyze(cur()), c = a.colOf[fix.dataset.fix];
+    const td = c != null && $('grid').querySelector(`td.cell[data-r="${fix.dataset.r}"][data-c="${c}"]`);
+    if (td) { td.scrollIntoView({ block: 'nearest', inline: 'center' }); editGridCell(td) }
+    return;
+  }
+  const td = e.target.closest('td.cell.ed');
+  if (td && CONFIG.canEdit && !td.classList.contains('editing')) editGridCell(td);
+});
+$('grid').addEventListener('change', e => {
+  const sh = cur(), t = e.target;
+  if (t.matches('select.type')) {
+    const c = +t.dataset.c, v = t.value;
+    if (v) {
+      const prev = Object.entries(sh.map).find(([i, x]) => x === v && +i !== c);
+      if (prev) { delete sh.map[prev[0]]; flash(`'${TYPE[v].label}' 지정을 ${colName(+prev[0])}열에서 ${colName(c)}열로 옮겼습니다.`) }
+      sh.map[c] = v;
+    } else delete sh.map[c];
+  } else if (t.id === 'selAll') {
+    const a = analyze(sh);
+    if (t.checked) { sh.unsel.clear(); a.rows.forEach(x => { if (x.st !== '') sh.manualOn.add(x.i) }) }
+    else { sh.manualOn.clear(); a.rows.forEach(x => { if (x.st === '') sh.unsel.add(x.i) }) }
+  } else if (t.matches('.rsel')) {
+    const r = +t.dataset.r, ok = analyze(sh).status[r] === '';
+    if (ok) t.checked ? sh.unsel.delete(r) : sh.unsel.add(r);
+    else t.checked ? sh.manualOn.add(r) : sh.manualOn.delete(r);
+  } else if (t.matches('.reel')) {
+    const s = sh.reel[t.dataset.k]; t.checked ? s.add(+t.dataset.r) : s.delete(+t.dataset.r);
+  } else if (t.matches('.buy')) {
+    const r = +t.dataset.r; if (t.checked) { sh.buyOn.add(r); sh.buyOff.delete(r) } else { sh.buyOff.add(r); sh.buyOn.delete(r) }
+  } else if (t.id === 'buyAll') {
+    const a = analyze(sh); a.rows.forEach(x => { if (!a.links[x.i]) return; if (t.checked) { sh.buyOn.add(x.i); sh.buyOff.delete(x.i) } else { sh.buyOff.add(x.i); sh.buyOn.delete(x.i) } });
+  } else if (t.matches('.reelall')) {
+    const s = sh.reel[t.dataset.k]; dataRows(sh).forEach(i => t.checked ? s.add(i) : s.delete(i));
+  } else return;
+  keepScroll('gridWrap', render2);
+});
+function selectedRows() { const sh = cur(), a = analyze(sh); return a.rows.map(x => x.i).filter(i => isSel(sh, i, a)) }
+$('bulkQtySet').addEventListener('click', () => {
+  const v = $('bulkQty').value.trim(); if (!isNum(v)) { $('bulkQty').focus(); flash('바꿀 수량을 숫자로 입력하세요.'); return }
+  const sh = cur(), c = analyze(sh).colOf.qty, rows = selectedRows();
+  rows.forEach(i => { setCell(sh, i, c, String(+v)); delete sh.qtyBase[i]; delete sh.mul[i] });
+  flash(`${rows.length}건의 수량을 ${+v}(으)로 바꿨습니다.`); keepScroll('gridWrap', render2);
+});
+/* 배수는 '기준 수량 × 배수'로 계산해 여러 번 눌러도 한 번만 적용됩니다. */
+let mulBusy = false;
+$('bulkMulSet').addEventListener('click', () => {
+  if (mulBusy) return;
+  const m = $('bulkMul').value.trim(); if (!isNum(m) || +m <= 0) { $('bulkMul').focus(); flash('적용할 배수를 1 이상의 숫자로 입력하세요.'); return }
+  mulBusy = true; $('bulkMulSet').disabled = true;
+  const sh = cur(), c = analyze(sh).colOf.qty, rows = selectedRows(), k = +m; let skipped = 0, same = 0, done = 0;
+  rows.forEach(i => {
+    if (sh.mul[i] === k || (k === 1 && !sh.mul[i])) { same++; return }
+    const base = sh.qtyBase[i] ?? sh.rows[i][c];
+    if (!isNum(base)) { skipped++; return }
+    sh.qtyBase[i] = base;
+    setCell(sh, i, c, String(+String(base).replace(/,/g, '') * k));
+    if (k === 1) { delete sh.mul[i]; delete sh.qtyBase[i] } else sh.mul[i] = k;
+    done++;
+  });
+  flash(done ? `${done}건의 수량을 기준 수량 × ${k}(으)로 맞췄습니다.${same ? ` ${same}건은 이미 같은 배수입니다.` : ''}${skipped ? ` 수량이 숫자가 아닌 ${skipped}건은 건너뛰었습니다.` : ''}`
+             : `선택한 행에는 이미 ×${k} 배수가 적용돼 있습니다. 다른 배수를 넣거나 수량 리셋을 누르세요.`);
+  keepScroll('gridWrap', render2);
+  setTimeout(() => { mulBusy = false; render2() }, 400);
+});
+$('bulkQtyReset').addEventListener('click', () => {
+  const sh = cur(), c = analyze(sh).colOf.qty, rows = selectedRows(); let n = 0;
+  rows.forEach(i => {
+    const key = i + ',' + c;
+    if (key in sh.orig) { setCell(sh, i, c, sh.orig[key]); n++ }
+    delete sh.qtyBase[i]; delete sh.mul[i];
+  });
+  flash(n ? `${n}건의 수량을 파일에 있던 값으로 되돌렸습니다.` : '선택한 행에 바뀐 수량이 없습니다.');
+  keepScroll('gridWrap', render2);
+});
+$('bulk').addEventListener('click', e => {
+  const bb = e.target.closest('button[data-buy]');
+  if (bb) {
+    const sh = cur(), a = analyze(sh), on = bb.dataset.buy === '1', rows = selectedRows().filter(i => a.links[i]);
+    rows.forEach(i => { if (on) { sh.buyOn.add(i); sh.buyOff.delete(i) } else { sh.buyOff.add(i); sh.buyOn.delete(i) } });
+    flash(rows.length ? `링크가 있는 ${rows.length}건의 구매대행을 ${on ? '켰' : '껐'}습니다.` : '선택한 행에 링크가 없습니다. 구매대행은 링크가 있는 행에만 지정됩니다.');
+    keepScroll('gridWrap', render2); return;
+  }
+  const b = e.target.closest('button[data-reel]'); if (!b) return;
+  const sh = cur(), s = sh.reel[b.dataset.reel], on = b.dataset.on === '1', rows = selectedRows();
+  rows.forEach(i => on ? s.add(i) : s.delete(i));
+  flash(`${rows.length}건의 ${b.dataset.reel === 'svc' ? '릴서비스' : '릴패키지'}를 ${on ? '켰' : '껐'}습니다.`); keepScroll('gridWrap', render2);
+});
+$('bulkClear').addEventListener('click', () => { const sh = cur(), a = analyze(sh); sh.manualOn.clear(); a.rows.forEach(x => { if (x.st === '') sh.unsel.add(x.i) }); keepScroll('gridWrap', render2) });
+$('revertAll').addEventListener('click', () => {
+  const sh = cur(); Object.entries(sh.orig).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); sh.rows[r][c] = v });
+  sh.orig = {}; sh.qtyBase = {}; sh.mul = {}; flash('고친 값을 모두 원래대로 돌렸습니다.'); keepScroll('gridWrap', render2);
+});
+
+/* ---------- 3단계: 변환 결과 ---------- */
+function buildPayload() {
+  const sh = cur(), a = analyze(sh), bc = bomCheck(sh, a), rlcRow = Object.fromEntries(bc.list.map(x => [x.row, x]));
+  const items = a.rows.filter(x => x.st === '' || x.st === 'qty').map(x => {
+    const r = sh.rows[x.i], o = { row: x.i + 1 };
+    TYPES.forEach(t => { if (a.colOf[t.key] != null) o[t.key] = r[a.colOf[t.key]] });
+    o.qty = isNum(o.qty) ? +String(o.qty).replace(/,/g, '') : o.qty;
+    o.reelService = sh.reel.svc.has(x.i); o.reelPackage = sh.reel.pkg.has(x.i);
+    o.edited = Object.keys(sh.orig).some(k => +k.split(',')[0] === x.i);
+    o.qtyMultiplier = sh.mul[x.i] || 1;
+    o.purchaseUrl = a.links[x.i] ? a.links[x.i].url : '';   // 구매 링크 (시스템 연동용)
+    o.purchase = !!a.buyRow[x.i];                            // true 이면 구매대행 행 → 자동변환 제외
+    o.rlc = rlcRow[x.i + 1] ? rlcRow[x.i + 1].t : '';        // R · C · L (BOM 판별용)
+    o.rlcBy = rlcRow[x.i + 1] ? rlcRow[x.i + 1].why : '';
+    delete o.url;
+    return o;
+  });
+  const { list, ...bomInfo } = bc;
+  state.bomCheck = bomInfo;
+  return { customer: state.customer?.number, project: state.project, file: state.file?.name, sheet: sh.name, bomCheck: bomInfo, items };
+}
+async function runConvert() {
+  const n = $('nextBtn'), why = $('why'); n.disabled = true; n.textContent = '변환 중…';
+  try {
+    const payload = buildPayload();
+    const buyItems = payload.items.filter(x => x.purchase);
+    const res = await API.convert({ ...payload, items: payload.items.filter(x => !x.purchase) }, (done, total) => { n.textContent = `변환 중… ${done}/${total}` });
+    /* 구매대행 행은 자동변환 없이 '구매대행 링크' 상태로 붙입니다. 변환 품명 자리는 부품명(없으면 풀파트)으로 채워 두며, 클릭해서 고칠 수 있습니다. */
+    res.items = res.items.concat(buyItems.map(x => ({ ...x, category: '구매대행', result: str(x.name) || str(x.part), status: 'link', note: hostOf(x.purchaseUrl) })))
+                         .sort((p, q) => p.row - q.row);
+    state.results = res; state.resEdits = {}; state.resFilter = 'all';
+    go(3);
+  } catch (err) {
+    refresh();
+    why.textContent = `변환하지 못했습니다: ${err.message}. 서버 주소(CONFIG.convertUrl)와 로그인 상태를 확인하고 다시 눌러 주세요.`;
+    why.className = 'why warn';
+  }
+}
+/* 3단계 최종 판별: 2단계 결과 + 자동변환 카테고리가 RLC인데 2단계에서 못 잡은 행 */
+function finalBom(items) {
+  const base = state.bomCheck || { rlc: 0, multiplierApplied: false, override: '' };
+  const extra = items.filter(x => !x.rlc && x.status !== 'link' && isRlcCategory(x)).length;
+  const rlc = (base.rlc || 0) + extra, auto = verdictOf(rlc, base.multiplierApplied);
+  const final = base.override === 'bom' ? { v: 'bom', label: 'BOM (직접 지정)', msg: '담당자가 BOM으로 지정했습니다.' } : base.override === 'parts' ? { v: 'parts', label: '일반 부품 (직접 지정)', msg: '담당자가 일반 부품으로 지정했습니다.' } : auto;
+  return { ...base, rlc, byCategory: extra, auto, final };
+}
+function render3() {
+  const res = state.results; if (!res) return;
+  const sh = cur(), items = res.items;
+  const linkN = items.filter(x => x.status === 'link').length, hasUrl = items.some(x => x.purchaseUrl);
+  $('linkTab').hidden = !linkN; if (!linkN && state.resFilter === 'link') state.resFilter = 'all';
+  const okN = items.filter(x => x.status === 'ok' || x.status === 'part').length, chkN = items.filter(x => x.status === 'check').length, noneN = items.filter(x => x.status === 'none').length;
+  const cmp = !!res.compare, isDiff = x => cmp && x.resultOld != null && x.status !== 'part' && (x.resultOld || '') !== (x.result || '');
+  const diffN = items.filter(isDiff).length;
+  $('diffTab').hidden = !cmp; if (!cmp && state.resFilter === 'diff') state.resFilter = 'all';
+  const editN = Object.keys(state.resEdits).length;
+  const bj = finalBom(items);
+  $('sum3').innerHTML = `<div><span>고객</span> <b>${esc(state.customer?.compName)}</b></div><div><span>프로젝트</span> <b>${esc(state.project)}</b></div><div><span>시트</span> <b>${esc(sh.name)}</b></div>`;
+  $('kpis').innerHTML = `<div class="kpi ${bj.final.v}" title="${esc(bj.final.msg)} RLC ${bj.rlc}건${bj.byCategory ? ` (자동변환 카테고리로 ${bj.byCategory}건 추가 확인)` : ''} · 배수 ${bj.multiplierApplied ? '적용' : '미적용'}"><span>BOM 판별</span><b>${esc(bj.final.label)}</b></div><div class="kpi"><span>변환 대상</span><b>총 ${items.length}건</b></div><div class="kpi ok"><span>변환됨</span><b>${okN}건</b></div><div class="kpi warn"><span>확인 필요</span><b>${chkN}건</b></div><div class="kpi bad"><span>미변환</span><b>${noneN}건</b></div>${linkN ? `<div class="kpi link"><span>구매대행 링크</span><b>${linkN}건</b></div>` : ''}${cmp ? `<div class="kpi warn"><span>기존 함수와 다름</span><b>${diffN}건</b></div>` : ''}<div class="kpi"><span>릴서비스 · 릴패키지</span><b>${items.filter(x => x.reelService).length} · ${items.filter(x => x.reelPackage).length}</b></div><div class="kpi"><span>직접 수정</span><b>${editN}건</b></div>`;
+  document.querySelectorAll('#resFilter .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.f === state.resFilter)));
+  const f = state.resFilter;
+  const show = items.filter(x => f === 'all' ? true : f === 'ok' ? (x.status === 'ok' || x.status === 'part') : f === 'check' ? x.status === 'check' : f === 'none' ? x.status === 'none' : f === 'diff' ? isDiff(x) : f === 'link' ? x.status === 'link' : (x.row in state.resEdits));
+  const cols = [['ref', '레퍼런스'], ['name', '부품명'], ['part', '풀파트'], ['qty', '수량']].filter(([k]) => items.some(x => x[k] !== undefined && x[k] !== ''));
+  let h = `<thead><tr><th class="rn">원본 행</th><th>상태</th><th>변환 품명</th>${cmp ? '<th>기존 결과</th>' : ''}<th>카테고리</th>${cols.map(([, l]) => `<th>${l}</th>`).join('')}${hasUrl ? '<th>링크</th>' : ''}<th>릴서비스</th><th>릴패키지</th></tr></thead><tbody>`;
+  show.forEach(x => {
+    const edited = x.row in state.resEdits, result = edited ? state.resEdits[x.row] : x.result;
+    const st = edited ? '<span class="st part">직접 수정</span>' : x.status === 'ok' ? '<span class="st ok">변환됨</span>' : x.status === 'part' ? '<span class="st part">풀파트 사용</span>' : x.status === 'link' ? `<span class="st link">구매대행 링크</span>` : x.status === 'check' ? `<span class="st warn">확인 필요${x.note ? ' · ' + esc(x.note) : ''}</span>` : `<span class="st none">미변환${x.note ? ' · ' + esc(x.note) : ''}</span>`;
+    const oldTd = cmp ? `<td class="cell old${isDiff(x) ? ' diff' : ''}" title="기존 함수 결과: ${esc(x.resultOld || '(없음)')}"><div class="clamp">${esc(x.resultOld || '—')}</div></td>` : '';
+    h += `<tr><td class="rn">${x.row}</td><td>${st}</td>
+      <td class="cell res${CONFIG.canEdit ? ' ed' : ''}${edited ? ' edited' : ''}" data-row="${x.row}" title="${edited ? '변환 결과: ' + esc(x.result || '(없음)') : esc(result)}"><div class="clamp">${esc(result || '')}</div></td>${oldTd}<td>${esc(x.category || '—')}</td>
+      ${cols.map(([k]) => `<td class="cell" title="${esc(x[k])}"><div class="clamp">${esc(x[k])}</div></td>`).join('')}
+      ${hasUrl ? `<td class="lnk">${x.purchaseUrl ? `<a href="${esc(x.purchaseUrl)}" target="_blank" rel="noopener noreferrer" title="${esc(x.purchaseUrl)}">${esc(hostOf(x.purchaseUrl))}</a>` : ''}</td>` : ''}
+      <td class="ck">${x.reelService ? '✓' : ''}</td><td class="ck">${x.reelPackage ? '✓' : ''}</td></tr>`;
+  });
+  if (!show.length) h += `<tr><td class="rn"></td><td class="cell" colspan="${cols.length + 5 + (cmp ? 1 : 0) + (hasUrl ? 1 : 0)}">해당하는 행이 없습니다.</td></tr>`;
+  $('resGrid').innerHTML = h + '</tbody>';
+  $('resGrid').classList.toggle('editable', CONFIG.canEdit);
+  $('demoNote').hidden = !res.demo;
+  $('modeTag').className = res.demo ? 'mode' : 'mode live';
+  $('modeTag').textContent = res.demo ? '예시 변환' : (cmp ? '개선 함수 · 기존과 비교 중' : '개선 함수 적용');
+  refresh();
+}
+$('resFilter').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; state.resFilter = b.dataset.f; render3() });
+$('resGrid').addEventListener('click', e => {
+  const td = e.target.closest('td.cell.res.ed'); if (!td || !CONFIG.canEdit) return;
+  const row = +td.dataset.row, item = state.results.items.find(x => x.row === row);
+  startEdit(td, v => {
+    if (v != null) { if (v === (item.result || '')) delete state.resEdits[row]; else state.resEdits[row] = v }
+    keepScroll('resWrap', render3);
+  }, row in state.resEdits ? state.resEdits[row] : (item.result || ''));
+});
+async function registerInq() {
+  const n = $('nextBtn'); n.disabled = true; n.textContent = '등록 중…';
+  const items = state.results.items.map(x => ({ ...x, result: x.row in state.resEdits ? state.resEdits[x.row] : x.result, resultEdited: x.row in state.resEdits }));
+  const bj = finalBom(state.results.items);
+  const r = await API.registerInq({ customer: state.customer?.number, project: state.project, bomCheck: { isBom: bj.final.v === 'bom', verdict: bj.final.v, label: bj.final.label, rlc: bj.rlc, rlcByRef: bj.byRef, rlcByName: bj.byName, rlcByCategory: bj.byCategory, multiplierApplied: bj.multiplierApplied, override: bj.override || '' }, items });
+  const buyN = items.filter(x => x.purchase).length;
+  $('submitMsg').textContent = r.demo ? `예시 화면입니다. ${items.length}건을 INQ로 등록할 준비가 됐습니다${buyN ? ` (구매대행 링크 ${buyN}건 포함)` : ''}. 보낼 데이터는 브라우저 콘솔에서 볼 수 있습니다.` : 'INQ 등록을 마쳤습니다.';
+  $('submitMsg').hidden = false; refresh();
+}
+
+/* ---------- 이동 · 액션 바 ---------- */
+function blocker() {
+  if (state.step === 1) {
+    if (!state.customer) return '고객을 먼저 검색해 선택하세요.';
+    if (!state.project) return '프로젝트를 선택하거나 새로 등록하세요.';
+    if (!state.file) return 'BOM 파일을 첨부하세요.';
+    return '';
+  }
+  if (state.step === 2) {
+    const a = analyze(cur());
+    if (a.colOf.qty == null) return '수량 컬럼을 지정하세요.';
+    if (a.colOf.name == null && a.colOf.part == null) return '부품명 또는 풀파트 컬럼을 지정하세요.';
+    if (!a.ok) return '변환할 행이 없습니다. 제목 행과 부품명 컬럼을 확인하세요.';
+    return '';
+  }
+  if (state.step === 3 && !state.results) return '변환 결과가 없습니다.';
+  return '';
+}
+function refresh() {
+  const b = blocker(), n = $('nextBtn'), why = $('why');
+  n.disabled = !!b;
+  n.textContent = state.step === 1 ? '다음' : state.step === 2 ? '변환 적용' : 'INQ 등록';
+  $('backBtn').hidden = state.step === 1;
+  if (b) { why.textContent = b; why.className = 'why'; return }
+  if (state.step === 1) { why.textContent = '준비됐습니다. 다음에서 컬럼을 지정하고 값을 고칩니다.'; why.className = 'why ok' }
+  else if (state.step === 2) {
+    const a = analyze(cur());
+    const bv = bomCheck(cur(), a).final;
+    if (a.qty) { why.textContent = `수량 확인 ${a.qty}건이 남아 있습니다. 그대로 적용해도 되지만 고치는 것을 권합니다.`; why.className = 'why warn' }
+    else if (bv.v === 'likely') { why.textContent = `BOM 추정 · 배수 미적용 — 세트 수량만큼 배수를 적용했는지 확인하세요. 그대로 변환해도 됩니다.`; why.className = 'why warn' }
+    else { why.textContent = `변환 대상 ${a.ok}건 · 제외 ${a.empty + a.long}건. 수정 사항을 적용하고 바로 변환합니다.`; why.className = 'why ok' }
+  } else {
+    const left = st => state.results.items.filter(x => x.status === st && !(x.row in state.resEdits)).length;
+    const none = left('none'), chk = left('check');
+    why.textContent = none ? `미변환 ${none}건은 변환 품명 없이 등록됩니다. 필요하면 직접 입력하세요.` : chk ? `확인 필요 ${chk}건이 있습니다. '?'나 '(없는스펙)'이 들어간 품명을 확인하세요.` : '모든 행에 변환 품명이 있습니다.';
+    why.className = none || chk ? 'why warn' : 'why ok';
+  }
+}
+function go(s) {
+  state.step = s;
+  [1, 2, 3].forEach(i => { $('step' + i).hidden = i !== s });
+  document.querySelectorAll('#stepper li').forEach(li => {
+    const i = +li.dataset.s;
+    if (i === s) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    li.classList.toggle('done', i < s);
+  });
+  if (s === 2) render2();
+  if (s === 3) render3();
+  refresh(); window.scrollTo({ top: 0 });
+}
+$('nextBtn').addEventListener('click', () => {
+  if (blocker()) return;
+  if (state.step === 1) return go(2);
+  if (state.step === 2) return runConvert();
+  return registerInq();
+});
+$('backBtn').addEventListener('click', () => { $('submitMsg').hidden = true; go(Math.max(1, state.step - 1)) });
+go(1);
+</script>
+</body>
+</html>
